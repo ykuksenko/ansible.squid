@@ -1,3 +1,8 @@
+squid
+--------------
+
+Ansible role to install and configure squid caching proxy server.
+
 Role Variables
 --------------
 
