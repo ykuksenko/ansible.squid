@@ -1,0 +1,10 @@
+- name: stop squid
+  service: name=squid state=stopped
+
+- name: initialize squidcache
+  command: /usr/sbin/squid -z
+  become: yes
+  become_user: squid
+
+- name: restart squid
+  service: name=squid state=restarted

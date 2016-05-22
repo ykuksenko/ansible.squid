@@ -1,0 +1,61 @@
+#cache bypass
+{% if squid_domain_bypass_list is defined %}
+{% for url in squid_domain_bypass_list %}
+acl URLsNotToBeCached dstdomain {{ url }}
+{% endfor %}
+cache deny URLsNotToBeCached
+always_direct allow URLsNotToBeCached
+{% endif %}
+
+#localhost access
+acl localnet src 127.0.0.1/32
+http_access allow localnet
+
+#local network access
+{%- for subnet in squid_local_subnets %}{{ '\n' }}acl LocalNetClients src {{ subnet }}{% endfor %}{{ '\n' -}}
+http_access allow LocalNetClients
+
+acl Safe_ports port 80
+acl Safe_ports port 21
+acl Safe_ports port 443
+acl CONNECT method CONNECT
+http_access deny !Safe_ports
+
+acl SSL_ports port 443
+http_access deny CONNECT !SSL_ports
+
+#Only allow cachemgr access from localhost
+http_access allow localhost manager
+http_access deny manager
+
+http_access deny to_localhost
+#http_access allow localhost
+
+{# And finally deny all other access to this proxy#}
+http_access deny all
+
+{% if (squid_intercept_port != 0) -%}
+http_port {{ squid_intercept_ip }}:{{ squid_intercept_port }} intercept
+{%- endif %}
+http_port {{ squid_listen_ip }}:{{ squid_listen_port }}
+
+
+refresh_pattern -i \.(jpeg|jpg|jpe|jp2|gif|tiff?|pcx|png|bmp|pic|ico)(\?.*|$) 7200 50% 129600
+refresh_pattern -i \.(mp2|mp3|mid|midi|mp[234]|wav|ram|ra|rm|au|3gp|m4r|m4a)(\?.*|$) 7200 50% 129600
+refresh_pattern -i \.(mpg|mpeg|mp4|m4v|divx|mov|avi|asf|wmv|wma|dat|flv|swf)(\?.*|$) 7200 50% 129600
+refresh_pattern -i \.(chm|dll|doc|docx|xls|xlsx|ppt|pptx|pps|ppsx|mdb|mdbx)(\?.*|$) 7200 50% 129600
+refresh_pattern -i \.(txt|conf|cfm|psd|wmf|emf|vsd|pdf|rtf|odt)(\?.*|$) 7200 50% 129600
+refresh_pattern -i \.(jar|exe|ipa|apk|deb|rpm|gz|bz|bz2|tar|tgz|zip|gzip|arj|ace|bin|cab|msi|rar|class)(\?.*|$) 7200 50% 129600
+refresh_pattern -i \.(htm|html|mhtml|css|js)(\?.*|$) 7200 50% 86400
+
+refresh_pattern ^ftp:           1440    20%     10080
+refresh_pattern -i (/cgi-bin/|\?) 0     0%      0
+refresh_pattern .               0       20%     4320
+
+{% for dir in squid_cache_dir -%}
+cache_dir {{ dir.type }} {{ dir.dir }} {{ dir.options }}
+{%- endfor %}
+
+maximum_object_size {{ squid_maximum_object_size }}
+dns_nameservers{% for ns in squid_nameservers %} {{ ns }}{% endfor %}
+maximum_object_size_in_memory {{ squid_maximum_object_size_in_memory }}

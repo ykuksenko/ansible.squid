@@ -1,0 +1,20 @@
+---
+squid_user: squid
+squid_group: squid
+squid_selinux_state: permissive
+squid_selinux_policy: targeted
+squid_maximum_object_size_in_memory: '128 KB'
+squid_maximum_object_size: '256 KB'
+squid_cache_dir: 
+  - dir: '/mnt/squid/aufs'
+    type: 'aufs'
+    options: '30000 32 256'
+squid_listen_ip: "{{ ansible_default_ipv4.address }}"
+squid_listen_port: 3128
+squid_intercept_ip: "{{ ansible_default_ipv4.address }}"
+squid_intercept_port: 0
+squid_local_subnets:
+  - '192.168.1.0/24'
+squid_nameservers:
+  - '8.8.8.8'
+  - '8.8.4.4'

@@ -1,0 +1,66 @@
+---
+- name: install squid and firewall control
+  dnf: pkg={{ item }} state=latest
+  with_items:
+    - squid
+    - python-firewall
+
+- name: ensure SE Linux is permissive
+  selinux: >
+    state="{{ squid_selinux_state }}"
+    policy="{{ squid_selinux_policy }}"
+
+- name: open squid port
+  firewalld: >
+    port="{{ squid_listen_port }}/tcp"
+    state=enabled
+    immediate=yes
+    permanent=yes
+
+- name: configure squid
+  template: >
+    src=squid.conf.j2
+    dest=/etc/squid/squid.conf
+    backup=no
+    owner="{{ squid_user }}"
+    group="{{ squid_group }}"
+    mode=0644
+  notify:
+    - stop squid
+    - initialize squidcache
+    - restart squid
+
+- name: populate squid cache folder
+  file: >
+    dest="{{ item.dir }}"
+    mode=0777
+    owner="{{ squid_user }}"
+    group="{{ squid_group }}"
+    state=directory
+  with_items: "{{squid_cache_dir}}"
+  notify:
+    - stop squid
+    - initialize squidcache
+    - restart squid
+
+- meta: flush_handlers
+
+- name: ensure squid is running
+  service: name=squid state=started enabled=yes
+
+- name: ensure squid port is open
+  wait_for: >
+    host="{{ inventory_hostname }}"
+    port="{{ squid_listen_port }}"
+    state=started
+  delegate_to: 127.0.0.1
+  become: no
+
+- name: ensure squid intercept port is open (if configured)
+  wait_for: >
+    host="{{ inventory_hostname }}"
+    port="{{ squid_intercept_port }}"
+    state=started
+  delegate_to: 127.0.0.1
+  become: no
+  when: squid_intercept_port != 0
